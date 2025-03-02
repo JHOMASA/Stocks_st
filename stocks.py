@@ -14,56 +14,100 @@ from prophet import Prophet
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 import streamlit as st
+import streamlit.components.v1 as components
 import plotly.graph_objects as go
+import time
 
 # Initialize Cohere client
 co = cohere.Client("YvexoWfYcfq9dxlWGt0EluWfYwfWwx5fbd6XJ4Aj")  # Replace with your Cohere API key
 
-# Custom CSS for styling
-st.markdown(
-    """
-    <style>
-    .stButton button {
-        background-color: #4CAF50;
-        color: white;
-        border-radius: 5px;
-        border: none;
-        padding: 10px 20px;
-        cursor: pointer;
-    }
-    .stButton button:hover {
-        background-color: #45a049;
-    }
-    .stTextInput input {
-        border-radius: 5px;
-        border: 1px solid #ddd;
-        padding: 10px;
-    }
-    .stHeader {
-        color: #4CAF50;
-    }
-    .stMarkdown h1 {
-        color: #4CAF50;
-    }
-    .stMarkdown h2 {
-        color: #FF5722;
-    }
-    .stMarkdown h3 {
-        color: #2196F3;
-    }
-    .stMarkdown h4 {
-        color: #9C27B0;
-    }
-    .stMarkdown h5 {
-        color: #FF9800;
-    }
-    .stMarkdown h6 {
-        color: #E91E63;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+# Custom CSS for the Pac-Man loading animation
+loading_css = """
+<style>
+@keyframes eating-top {
+  0% { transform: rotate(-40deg); }
+  50% { transform: rotate(0deg); }
+  100% { transform: rotate(-40deg); }
+}
+
+@keyframes eating-bottom {
+  0% { transform: rotate(80deg); }
+  50% { transform: rotate(0deg); }
+  100% { transform: rotate(80deg); }
+}
+
+@keyframes move-icons {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-30px); }
+}
+
+body {
+  background: #1d1d1d;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.pac-man {
+  border-radius: 50%;
+  position: relative;
+  margin-top: 5em;
+  border-radius: 100em 100em 0 0;
+  background: #fed75a;
+  transform-origin: bottom;
+  animation: eating-top .5s infinite;
+  width: 70px;
+  height: 35px;
+}
+
+.pac-man::before {
+  content: '';
+  display: block;
+  margin-top: 35px;
+  position: absolute;
+  transform-origin: top;
+  border-radius: 0 0 100em 100em;
+  transform: rotate(80deg);
+  animation: eating-bottom .5s infinite;
+  width: 70px;
+  height: 35px;
+  background: #fed75a;
+}
+
+.icons {
+  display: flex;
+  gap: 30px;
+  margin-top: -30px;
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+  background: #fed75a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: black;
+  border-radius: 5px;
+  font-weight: bold;
+  box-shadow: 0 0 10px #fed75a;
+  animation: move-icons .5s infinite linear;
+}
+</style>
+"""
+
+# HTML for the Pac-Man loading animation
+loading_html = """
+<div class="pac-man"></div>
+<div class="icons">
+  <div class="icon">▶</div>  <!-- Play -->
+  <div class="icon">⏸</div>  <!-- Pause -->
+  <div class="icon">⏹</div>  <!-- Stop -->
+</div>
+"""
 
 # Fetch stock data
 def fetch_stock_data(symbol):
@@ -331,7 +375,7 @@ def main():
     # Navigation tabs
     tab = st.radio(
         "Choose a section",
-        ["Stock Analysis", "Monte Carlo Simulation", "Financial Ratios", "News Sentiment", "Latest News", "Recommendations", "Predictions"],
+        ["Stock Analysis", "Monte Carlo Simulation", "Financial Ratios", "News Sentiment", "Latest News", "Recommendations", "Predictions", "Chat"],
         horizontal=True
     )
 
@@ -339,8 +383,17 @@ def main():
         st.header("Stock Analysis")
         stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
         if st.button("Submit"):
+            # Display the loading animation
+            st.markdown(loading_css, unsafe_allow_html=True)
+            components.html(loading_html, height=200)
+
+            # Fetch stock data
             stock_data = fetch_stock_data(stock_ticker)
             if not stock_data.empty:
+                # Hide the loading animation
+                st.empty()
+
+                # Display the stock data
                 fig = go.Figure()
                 fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data['Close'], mode='lines', name='Close Price', line=dict(color='#4CAF50')))
                 fig.update_layout(
@@ -352,23 +405,24 @@ def main():
                 )
                 st.plotly_chart(fig)
 
-                # Chat with Cohere
-                st.subheader("Chat with Cohere")
-                prompt = st.text_input("Ask me anything...")
-                if st.button("Send"):
-                    context = f"Stock Analysis for {stock_ticker}:\n{stock_data.tail().to_string()}"
-                    response = chat_with_cohere(prompt, context)
-                    st.markdown(f"<p style='color: #4CAF50;'>Cohere Response:</p>", unsafe_allow_html=True)
-                    st.write(response)
-
     elif tab == "Monte Carlo Simulation":
         st.header("Monte Carlo Simulation")
         stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
         if st.button("Submit"):
+            # Display the loading animation
+            st.markdown(loading_css, unsafe_allow_html=True)
+            components.html(loading_html, height=200)
+
+            # Fetch stock data
             stock_data = fetch_stock_data(stock_ticker)
             if not stock_data.empty:
+                # Perform Monte Carlo simulation
                 simulations = monte_carlo_simulation(stock_data)
                 if simulations is not None:
+                    # Hide the loading animation
+                    st.empty()
+
+                    # Display the simulation results
                     fig = go.Figure()
                     for i in range(min(10, simulations.shape[1])):  # Plot first 10 simulations
                         fig.add_trace(go.Scatter(
@@ -387,40 +441,42 @@ def main():
                     )
                     st.plotly_chart(fig)
 
-                    # Chat with Cohere
-                    st.subheader("Chat with Cohere")
-                    prompt = st.text_input("Ask me anything...")
-                    if st.button("Send"):
-                        context = f"Monte Carlo Simulation for {stock_ticker}:\n{stock_data.tail().to_string()}"
-                        response = chat_with_cohere(prompt, context)
-                        st.markdown(f"<p style='color: #FF5722;'>Cohere Response:</p>", unsafe_allow_html=True)
-                        st.write(response)
-
     elif tab == "Financial Ratios":
         st.header("Financial Ratios")
         stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
         if st.button("Submit"):
+            # Display the loading animation
+            st.markdown(loading_css, unsafe_allow_html=True)
+            components.html(loading_html, height=200)
+
+            # Fetch stock data
             stock_data = fetch_stock_data(stock_ticker)
             if not stock_data.empty:
+                # Hide the loading animation
+                st.empty()
+
+                # Calculate and display financial ratios
                 risk_metrics = calculate_risk_metrics(stock_data)
                 st.table(pd.DataFrame(list(risk_metrics.items()), columns=["Ratio", "Value"]))
-
-                # Chat with Cohere
-                st.subheader("Chat with Cohere")
-                prompt = st.text_input("Ask me anything...")
-                if st.button("Send"):
-                    context = f"Financial Ratios for {stock_ticker}:\n{calculate_risk_metrics(stock_data)}"
-                    response = chat_with_cohere(prompt, context)
-                    st.markdown(f"<p style='color: #2196F3;'>Cohere Response:</p>", unsafe_allow_html=True)
-                    st.write(response)
 
     elif tab == "News Sentiment":
         st.header("News Sentiment Analysis")
         stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
         if st.button("Submit"):
+            # Display the loading animation
+            st.markdown(loading_css, unsafe_allow_html=True)
+            components.html(loading_html, height=200)
+
+            # Fetch news articles
             articles = fetch_news(stock_ticker)
             if articles:
+                # Analyze sentiment
                 sentiment_counts = analyze_news_sentiment(articles)
+
+                # Hide the loading animation
+                st.empty()
+
+                # Display sentiment analysis results
                 fig = go.Figure(data=[go.Bar(
                     x=list(sentiment_counts.keys()),
                     y=list(sentiment_counts.values())
@@ -432,62 +488,60 @@ def main():
                 )
                 st.plotly_chart(fig)
 
-                # Chat with Cohere
-                st.subheader("Chat with Cohere")
-                prompt = st.text_input("Ask me anything...")
-                if st.button("Send"):
-                    context = f"News Sentiment for {stock_ticker}:\n{analyze_news_sentiment(articles)}"
-                    response = chat_with_cohere(prompt, context)
-                    st.markdown(f"<p style='color: #9C27B0;'>Cohere Response:</p>", unsafe_allow_html=True)
-                    st.write(response)
-
     elif tab == "Latest News":
         st.header("Latest News")
         stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
         if st.button("Submit"):
+            # Display the loading animation
+            st.markdown(loading_css, unsafe_allow_html=True)
+            components.html(loading_html, height=200)
+
+            # Fetch news articles
             articles = fetch_news(stock_ticker)
             if articles:
+                # Analyze sentiment
                 sentiment_counts = analyze_news_sentiment(articles)
-                for article in articles[:5]:  # Display top 5 articles
+
+                # Hide the loading animation
+                st.empty()
+
+                # Display top 5 articles
+                for article in articles[:5]:
                     st.subheader(article.get('title', 'No Title Available'))
                     st.write(article.get('description', 'No Description Available'))
                     st.write(f"Sentiment: {article.get('sentiment', 'N/A')}")
-
-                # Chat with Cohere
-                st.subheader("Chat with Cohere")
-                prompt = st.text_input("Ask me anything...")
-                if st.button("Send"):
-                    context = f"Latest News for {stock_ticker}:\n{articles[:5]}"  # Display top 5 articles
-                    response = chat_with_cohere(prompt, context)
-                    st.markdown(f"<p style='color: #FF9800;'>Cohere Response:</p>", unsafe_allow_html=True)
-                    st.write(response)
 
     elif tab == "Recommendations":
         st.header("Recommendations")
         stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
         period = st.number_input("Enter Analysis Period (days)", value=30)
         if st.button("Submit"):
+            # Display the loading animation
+            st.markdown(loading_css, unsafe_allow_html=True)
+            components.html(loading_html, height=200)
+
+            # Fetch stock data
             stock_data = fetch_stock_data(stock_ticker)
             if not stock_data.empty:
+                # Hide the loading animation
+                st.empty()
+
+                # Generate and display recommendations
                 financial_ratios = calculate_risk_metrics(stock_data)
                 recommendations = generate_recommendations(stock_data, financial_ratios, period)
                 for recommendation in recommendations:
                     st.write(recommendation)
-
-                # Chat with Cohere
-                st.subheader("Chat with Cohere")
-                prompt = st.text_input("Ask me anything...")
-                if st.button("Send"):
-                    context = f"Recommendations for {stock_ticker}:\n{generate_recommendations(stock_data, calculate_risk_metrics(stock_data), period)}"
-                    response = chat_with_cohere(prompt, context)
-                    st.markdown(f"<p style='color: #E91E63;'>Cohere Response:</p>", unsafe_allow_html=True)
-                    st.write(response)
 
     elif tab == "Predictions":
         st.header("Predictions")
         stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
         model_type = st.selectbox("Select Model", ["LSTM", "XGBoost", "ARIMA", "Prophet", "Random Forest", "Linear Regression", "Moving Average"])
         if st.button("Submit"):
+            # Display the loading animation
+            st.markdown(loading_css, unsafe_allow_html=True)
+            components.html(loading_html, height=200)
+
+            # Fetch stock data
             stock_data = fetch_stock_data(stock_ticker)
             if not stock_data.empty:
                 try:
@@ -530,6 +584,9 @@ def main():
                     if len(predictions) != len(future_dates):
                         st.error("Error: Predictions and future_dates length mismatch.")
                     else:
+                        # Hide the loading animation
+                        st.empty()
+
                         # Plot the graph
                         fig = go.Figure()
                         fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data['Close'], mode='lines', name='Historical Data', line=dict(color='#4CAF50')))
@@ -546,14 +603,10 @@ def main():
                 except Exception as e:
                     st.error(f"Error in predictions: {e}")
 
-                # Chat with Cohere
-                st.subheader("Chat with Cohere")
-                prompt = st.text_input("Ask me anything...")
-                if st.button("Send"):
-                    context = f"Predictions for {stock_ticker}:\nPredictions will be displayed here."
-                    response = chat_with_cohere(prompt, context)
-                    st.markdown(f"<p style='color: #3F51B5;'>Cohere Response:</p>", unsafe_allow_html=True)
-                    st.write(response)
+    elif tab == "Chat":
+        st.header("Chat with Cohere")
+        st.markdown(loading_css, unsafe_allow_html=True)
+        components.html(loading_html, height=200)
 
 if __name__ == "__main__":
     main()
