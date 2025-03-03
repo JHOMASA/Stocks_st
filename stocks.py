@@ -19,7 +19,7 @@ import plotly.graph_objects as go
 import time
 
 # Initialize Cohere client
-co = cohere.Client("YvexoWfYcfq9dxlWGt0EluWfYwfWwx5fbd6XJ4Aj"")  # Replace with your Cohere API key
+co = cohere.Client("YvexoWfYcfq9dxlWGt0EluWfYwfWwx5fbd6XJ4Aj")  # Replace with your Cohere API key
 
 # Custom CSS for dark theme and glitchy buttons
 custom_css = """
