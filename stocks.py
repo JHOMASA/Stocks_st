@@ -343,31 +343,31 @@ def main():
                 )
                 st.plotly_chart(fig)
 
-    elif choice == "Latest News":
-    st.header("Latest News")
-    stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
-    if st.button("Submit"):
-        with st.spinner("Fetching news articles..."):
-            articles = fetch_news(stock_ticker)
-            if articles:
-                try:
-                    sentiment_counts = analyze_news_sentiment(articles)
-                    st.subheader("Sentiment Summary")
-                    st.write(f"Positive: {sentiment_counts['POSITIVE']}")
-                    st.write(f"Negative: {sentiment_counts['NEGATIVE']}")
-                    st.write(f"Neutral: {sentiment_counts['NEUTRAL']}")
-                    st.write(f"Errors: {sentiment_counts['ERROR']}")
+   elif choice == "Latest News":
+        st.header("Latest News")
+        stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
+        if st.button("Submit"):
+            with st.spinner("Fetching news articles..."):
+                articles = fetch_news(stock_ticker)
+                if articles:
+                    try:
+                        sentiment_counts = analyze_news_sentiment(articles)
+                        st.subheader("Sentiment Summary")
+                        st.write(f"Positive: {sentiment_counts['POSITIVE']}")
+                        st.write(f"Negative: {sentiment_counts['NEGATIVE']}")
+                        st.write(f"Neutral: {sentiment_counts['NEUTRAL']}")
+                        st.write(f"Errors: {sentiment_counts['ERROR']}")
 
-                    st.subheader("Top 5 News Articles")
-                    for article in articles[:5]:  # Display top 5 articles
-                        st.write(f"**Title:** {article.get('title', 'No Title Available')}")
-                        st.write(f"**Description:** {article.get('description', 'No Description Available')}")
-                        st.write(f"**Sentiment:** {article.get('sentiment', 'N/A')}")
-                        st.write("---")
-                except Exception as e:
-                    st.error(f"Error processing articles: {e}")
-            else:
-                st.warning("No news articles found for this stock ticker.")
+                        st.subheader("Top 5 News Articles")
+                        for article in articles[:5]:  # Display top 5 articles
+                            st.write(f"**Title:** {article.get('title', 'No Title Available')}")
+                            st.write(f"**Description:** {article.get('description', 'No Description Available')}")
+                            st.write(f"**Sentiment:** {article.get('sentiment', 'N/A')}")
+                            st.write("---")
+                    except Exception as e:
+                        st.error(f"Error processing articles: {e}")
+                else:
+                    st.warning("No news articles found for this stock ticker.")
 
     elif choice == "Recommendations":
         st.header("Recommendations")
