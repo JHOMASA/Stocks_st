@@ -14,9 +14,10 @@ from prophet import Prophet
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 import plotly.graph_objects as go
+from textblob import TextBlob
 
 # Initialize Cohere client
-co = cohere.Client("YYvexoWfYcfq9dxlWGt0EluWfYwfWwx5fbd6XJ4Aj")  # Replace with your valid API key
+co = cohere.Client("gpWuZqkXdfhfbYkjLlyRnc5x2rj0ml1IqfULfjt0")  # Replace with your valid API key
 
 # Fetch stock data
 def fetch_stock_data(symbol):
@@ -66,12 +67,19 @@ def analyze_news_sentiment(articles):
             sentiment = response.classifications[0].prediction
         except Exception as e:
             st.warning(f"Cohere API failed. Error: {e}")
-            sentiment = "ERROR"
+            # Fallback to TextBlob for sentiment analysis
+            blob = TextBlob(text)
+            polarity = blob.sentiment.polarity
+            if polarity > 0:
+                sentiment = "POSITIVE"
+            elif polarity < 0:
+                sentiment = "NEGATIVE"
+            else:
+                sentiment = "NEUTRAL"
 
         article["sentiment"] = sentiment
         sentiment_counts[sentiment] += 1
     return sentiment_counts
-
 # Calculate risk metrics
 def calculate_risk_metrics(stock_data):
     try:
@@ -336,17 +344,26 @@ def main():
                 st.plotly_chart(fig)
 
     elif choice == "Latest News":
-        st.header("Latest News")
-        stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
-        if st.button("Submit"):
+    st.header("Latest News")
+    stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
+    if st.button("Submit"):
+        with st.spinner("Fetching news articles..."):
             articles = fetch_news(stock_ticker)
             if articles:
                 try:
                     sentiment_counts = analyze_news_sentiment(articles)
+                    st.subheader("Sentiment Summary")
+                    st.write(f"Positive: {sentiment_counts['POSITIVE']}")
+                    st.write(f"Negative: {sentiment_counts['NEGATIVE']}")
+                    st.write(f"Neutral: {sentiment_counts['NEUTRAL']}")
+                    st.write(f"Errors: {sentiment_counts['ERROR']}")
+
+                    st.subheader("Top 5 News Articles")
                     for article in articles[:5]:  # Display top 5 articles
-                        st.subheader(article.get('title', 'No Title Available'))
-                        st.write(article.get('description', 'No Description Available'))
-                        st.write(f"Sentiment: {article.get('sentiment', 'N/A')}")
+                        st.write(f"**Title:** {article.get('title', 'No Title Available')}")
+                        st.write(f"**Description:** {article.get('description', 'No Description Available')}")
+                        st.write(f"**Sentiment:** {article.get('sentiment', 'N/A')}")
+                        st.write("---")
                 except Exception as e:
                     st.error(f"Error processing articles: {e}")
             else:
