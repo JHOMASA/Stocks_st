@@ -15,9 +15,13 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 import streamlit as st
 import plotly.graph_objects as go
+from transformers import pipeline
 
 # Initialize Cohere client
 co = cohere.Client("YYvexoWfYcfq9dxlWGt0EluWfYwfWwx5fbd6XJ4Aj")  # Replace with your Cohere API key
+
+# Initialize sentiment analysis pipeline
+sentiment_pipeline = pipeline("sentiment-analysis")
 
 # Fetch stock data
 def fetch_stock_data(symbol):
@@ -44,7 +48,7 @@ def fetch_news(query):
         st.error(f"Error fetching news: {e}")
         return []
 
-# Analyze sentiment of news articles using Cohere
+# Analyze sentiment of news articles
 def analyze_news_sentiment(articles):
     sentiment_counts = {"POSITIVE": 0, "NEGATIVE": 0, "NEUTRAL": 0}
     for article in articles:
@@ -52,6 +56,7 @@ def analyze_news_sentiment(articles):
         description = article.get("description", "")
         text = f"{title}. {description}"
         try:
+            # Use Cohere for sentiment analysis
             response = co.classify(
                 model="large",
                 inputs=[text],
@@ -62,11 +67,14 @@ def analyze_news_sentiment(articles):
                 ]
             )
             sentiment = response.classifications[0].prediction
-            article["sentiment"] = sentiment
-            sentiment_counts[sentiment] += 1
         except Exception as e:
-            st.error(f"Error analyzing sentiment for article: {text}. Error: {e}")
-            article["sentiment"] = "ERROR"
+            # Fallback to Hugging Face pipeline if Cohere fails
+            st.warning(f"Cohere API failed. Using Hugging Face pipeline for sentiment analysis. Error: {e}")
+            result = sentiment_pipeline(text)[0]
+            sentiment = result['label'].upper()  # Convert to uppercase to match Cohere's format
+
+        article["sentiment"] = sentiment
+        sentiment_counts[sentiment] += 1
     return sentiment_counts
 
 # Calculate risk metrics
@@ -210,6 +218,7 @@ def predict_arima(model, steps=30):
 def train_prophet_model(data):
     df = data[['Close']].reset_index()
     df.columns = ['ds', 'y']
+    df['ds'] = df['ds'].dt.tz_localize(None)  # Remove timezone information
     model = Prophet()
     model.fit(df)
     return model
@@ -412,3 +421,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
