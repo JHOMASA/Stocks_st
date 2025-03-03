@@ -1,3 +1,5 @@
+# Initialize Cohere client
+co = cohere.Client("")  # Replace with your valid API key
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -14,7 +16,7 @@ from prophet import Prophet
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 import plotly.graph_objects as go
-from textblob import TextBlob
+from textblob import TextBlob  # Fallback sentiment analysis
 
 # Initialize Cohere client
 co = cohere.Client("gpWuZqkXdfhfbYkjLlyRnc5x2rj0ml1IqfULfjt0")  # Replace with your valid API key
@@ -80,6 +82,7 @@ def analyze_news_sentiment(articles):
         article["sentiment"] = sentiment
         sentiment_counts[sentiment] += 1
     return sentiment_counts
+
 # Calculate risk metrics
 def calculate_risk_metrics(stock_data):
     try:
@@ -343,7 +346,7 @@ def main():
                 )
                 st.plotly_chart(fig)
 
-   elif choice == "Latest News":
+    elif choice == "Latest News":
         st.header("Latest News")
         stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
         if st.button("Submit"):
@@ -439,3 +442,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
