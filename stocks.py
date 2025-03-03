@@ -19,7 +19,7 @@ import plotly.graph_objects as go
 import time
 
 # Initialize Cohere client
-co = cohere.Client("YvexoWfYcfq9dxlWGt0EluWfYwfWwx5fbd6XJ4Aj")  # Replace with your Cohere API key
+co = cohere.Client("YYvexoWfYcfq9dxlWGt0EluWfYwfWwx5fbd6XJ4Aj")  # Replace with your Cohere API key
 
 # Custom CSS for dark theme and glitchy buttons
 custom_css = """
@@ -327,7 +327,9 @@ def analyze_news_sentiment(articles):
         description = article.get("description", "")
         text = f"{title}. {description}"
         try:
-            sentiment = co.classify(text).classifications[0].prediction
+            # Use the `inputs` keyword argument for the classify method
+            response = co.classify(inputs=[text])
+            sentiment = response.classifications[0].prediction
             article["sentiment"] = sentiment
             sentiment_counts[sentiment] += 1
         except Exception as e:
@@ -372,6 +374,21 @@ def monte_carlo_simulation(stock_data, n_simulations=1000, n_days=252):
     except Exception as e:
         st.error(f"Error in Monte Carlo Simulation: {e}")
         return None
+
+# Generate recommendations based on stock data and financial ratios
+def generate_recommendations(stock_data, financial_ratios, period):
+    recommendations = []
+    volatility = float(financial_ratios["Volatility"].strip('%')) / 100
+    sharpe_ratio = float(financial_ratios["Sharpe Ratio"])
+
+    if volatility > 0.2:
+        recommendations.append("High volatility detected. Consider diversifying your portfolio.")
+    if sharpe_ratio > 1:
+        recommendations.append("Strong Sharpe Ratio. This stock is performing well relative to its risk.")
+    else:
+        recommendations.append("Low Sharpe Ratio. Consider evaluating other investment options.")
+
+    return recommendations
 
 # Streamlit App
 def main():
@@ -511,48 +528,5 @@ def main():
                     for recommendation in recommendations:
                         st.write(recommendation)
 
-    elif selected_tab == "Predictions":
-        st.header("Predictions")
-        stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
-        model_type = st.selectbox("Select Model", ["LSTM", "XGBoost", "ARIMA", "Prophet", "Random Forest", "Linear Regression", "Moving Average"])
-        if st.button("Submit"):
-            with st.spinner("Running predictions..."):
-                stock_data = fetch_stock_data(stock_ticker)
-                if not stock_data.empty:
-                    try:
-                        if model_type == "LSTM":
-                            if len(stock_data) < 60:
-                                st.error("Error: Insufficient data for LSTM (requires at least 60 days).")
-                            else:
-                                X, y, scaler = prepare_lstm_data(stock_data)
-                                model, _ = train_lstm_model(stock_data)
-                                predictions = predict_lstm(model, scaler, stock_data)
-
-                        # Create a date range for the predictions
-                        last_date = stock_data.index[-1]
-                        future_dates = pd.date_range(start=last_date, periods=31, freq='B')[1:]  # Exclude the last date
-
-                        # Ensure predictions and future_dates have the same length
-                        if len(predictions) != len(future_dates):
-                            st.error("Error: Predictions and future_dates length mismatch.")
-                        else:
-                            # Plot the graph
-                            fig = go.Figure()
-                            fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data['Close'], mode='lines', name='Historical Data', line=dict(color='#4CAF50')))
-                            fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Predicted Data', line=dict(color='#3F51B5')))
-                            fig.update_layout(
-                                title=f"Stock Price Predictions for {stock_ticker}",
-                                xaxis_title="Date",
-                                yaxis_title="Price",
-                                plot_bgcolor='#1a1a1a',
-                                paper_bgcolor='#1a1a1a',
-                                font=dict(color='#ffffff')
-                            )
-                            st.plotly_chart(fig)
-
-                    except Exception as e:
-                        st.error(f"Error in predictions: {e}")
-
 if __name__ == "__main__":
     main()
-
