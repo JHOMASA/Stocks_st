@@ -45,12 +45,12 @@ def fetch_news(query):
 
 # Analyze sentiment of news articles
 def analyze_news_sentiment(articles):
-    sentiment_counts = {"POSITIVE": 0, "NEGATIVE": 0, "NEUTRAL": 0}
+    sentiment_counts = {"POSITIVE": 0, "NEGATIVE": 0, "NEUTRAL": 0, "ERROR": 0}
     for article in articles:
         title = article.get("title", "")
         description = article.get("description", "")
         text = f"{title}. {description}"
-        sentiment = "N/A"  # Default value
+        sentiment = "ERROR"  # Default value
 
         try:
             # Use Cohere API for sentiment analysis
@@ -213,6 +213,7 @@ def predict_arima(model, steps=30):
 def train_prophet_model(data):
     df = data[['Close']].reset_index()
     df.columns = ['ds', 'y']
+    df['ds'] = df['ds'].dt.tz_localize(None)  # Remove timezone
     model = Prophet()
     model.fit(df)
     return model
