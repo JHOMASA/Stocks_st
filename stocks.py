@@ -141,6 +141,133 @@ def generate_recommendations(stock_data, financial_ratios, period=30):
 
     return recommendations
 
+# Prepare data for LSTM
+def prepare_lstm_data(data, look_back=60):
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    scaled_data = scaler.fit_transform(data[['Close']].values)
+    X, y = [], []
+    for i in range(look_back, len(scaled_data)):
+        X.append(scaled_data[i-look_back:i, 0])
+        y.append(scaled_data[i, 0])
+    X, y = np.array(X), np.array(y)
+    X = np.reshape(X, (X.shape[0], X.shape[1], 1))
+    return X, y, scaler
+
+# Train LSTM model
+def train_lstm_model(data):
+    X, y, scaler = prepare_lstm_data(data)
+    model = Sequential()
+    model.add(LSTM(units=50, return_sequences=True, input_shape=(X.shape[1], 1)))
+    model.add(LSTM(units=50, return_sequences=False))
+    model.add(Dense(units=25))
+    model.add(Dense(units=1))
+    model.compile(optimizer='adam', loss='mean_squared_error')
+    model.fit(X, y, batch_size=32, epochs=10)
+    return model, scaler
+
+# Predict using LSTM
+def predict_lstm(model, scaler, data, look_back=60):
+    last_sequence = scaler.transform(data[['Close']].values[-look_back:])
+    last_sequence = np.reshape(last_sequence, (1, look_back, 1))
+    predictions = []
+    for _ in range(30):  # Predict next 30 days
+        pred = model.predict(last_sequence)
+        predictions.append(pred[0][0])
+        last_sequence = np.append(last_sequence[:, 1:, :], [[pred]], axis=1)
+    predictions = scaler.inverse_transform(np.array(predictions).reshape(-1, 1))
+    return predictions.flatten()
+
+# Train XGBoost model
+def train_xgboost_model(data):
+    data['Returns'] = data['Close'].pct_change()
+    data = data.dropna()
+    X = data[['Returns']].shift(1).dropna()
+    y = data['Close'][1:]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+    model = XGBRegressor(objective='reg:squarederror', n_estimators=100)
+    model.fit(X_train, y_train)
+    return model
+
+# Predict using XGBoost
+def predict_xgboost(model, data):
+    last_return = data['Close'].pct_change().iloc[-1]
+    predictions = []
+    for _ in range(30):  # Predict next 30 days
+        pred = model.predict(np.array([[last_return]]))
+        predictions.append(pred[0])
+        last_return = (pred[0] - data['Close'].iloc[-1]) / data['Close'].iloc[-1]
+    return predictions
+
+# Train ARIMA model
+def train_arima_model(data):
+    model = ARIMA(data['Close'], order=(5, 1, 0))  # (p, d, q) parameters
+    model_fit = model.fit()
+    return model_fit
+
+# Predict using ARIMA
+def predict_arima(model, steps=30):
+    predictions = model.forecast(steps=steps)
+    return predictions
+
+# Train Prophet model
+def train_prophet_model(data):
+    df = data[['Close']].reset_index()
+    df.columns = ['ds', 'y']
+    model = Prophet()
+    model.fit(df)
+    return model
+
+# Predict using Prophet
+def predict_prophet(model, periods=30):
+    future = model.make_future_dataframe(periods=periods)
+    forecast = model.predict(future)
+    return forecast['yhat'][-periods:].values
+
+# Train Random Forest model
+def train_random_forest_model(data):
+    data['Returns'] = data['Close'].pct_change()
+    data = data.dropna()
+    X = data[['Returns']].shift(1).dropna()
+    y = data['Close'][1:]
+    model = RandomForestRegressor(n_estimators=100)
+    model.fit(X, y)
+    return model
+
+# Predict using Random Forest
+def predict_random_forest(model, data, steps=30):
+    predictions = []
+    last_return = data['Close'].pct_change().iloc[-1]
+    for _ in range(steps):
+        pred = model.predict([[last_return]])
+        predictions.append(pred[0])
+        last_return = (pred[0] - data['Close'].iloc[-1]) / data['Close'].iloc[-1]
+    return predictions
+
+# Train Linear Regression model
+def train_linear_regression_model(data):
+    data['Returns'] = data['Close'].pct_change()
+    data = data.dropna()
+    X = data[['Returns']].shift(1).dropna()
+    y = data['Close'][1:]
+    model = LinearRegression()
+    model.fit(X, y)
+    return model
+
+# Predict using Linear Regression
+def predict_linear_regression(model, data, steps=30):
+    predictions = []
+    last_return = data['Close'].pct_change().iloc[-1]
+    for _ in range(steps):
+        pred = model.predict([[last_return]])
+        predictions.append(pred[0])
+        last_return = (pred[0] - data['Close'].iloc[-1]) / data['Close'].iloc[-1]
+    return predictions
+
+# Predict using Moving Average
+def predict_moving_average(data, window=30):
+    predictions = data['Close'].rolling(window=window).mean().iloc[-30:].values
+    return predictions
+
 # Streamlit app
 def main():
     st.title("Stock Analysis Dashboard")
