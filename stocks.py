@@ -69,6 +69,75 @@ def analyze_news_sentiment(articles):
             article["sentiment"] = "ERROR"
     return sentiment_counts
 
+# Calculate risk metrics
+def calculate_risk_metrics(stock_data):
+    try:
+        returns = stock_data['Close'].pct_change().dropna()
+        volatility = returns.std() * np.sqrt(252)  # Annualized volatility
+        max_drawdown = (stock_data['Close'] / stock_data['Close'].cummax() - 1).min()
+        sharpe_ratio = returns.mean() / returns.std() * np.sqrt(252)  # Annualized Sharpe Ratio
+        var_95 = np.percentile(returns, 5)  # Value at Risk (95% confidence)
+        return {
+            "Volatility": f"{volatility:.2%}",
+            "Max Drawdown": f"{max_drawdown:.2%}",
+            "Sharpe Ratio": f"{sharpe_ratio:.2f}",
+            "VaR (95%)": f"{var_95:.2%}"
+        }
+    except Exception as e:
+        st.error(f"Error calculating risk metrics: {e}")
+        return {}
+
+# Monte Carlo Simulation
+def monte_carlo_simulation(stock_data, num_simulations=1000, days=252):
+    try:
+        if stock_data.empty:
+            raise ValueError("No stock data available for simulation.")
+
+        returns = stock_data['Close'].pct_change().dropna()
+        if len(returns) < 2:
+            raise ValueError("Insufficient data to calculate returns.")
+
+        mu = returns.mean()
+        sigma = returns.std()
+        simulations = np.zeros((days, num_simulations))
+        S0 = stock_data['Close'].iloc[-1]  # Last observed price
+
+        for i in range(num_simulations):
+            daily_returns = np.random.normal(mu, sigma, days)
+            simulations[:, i] = S0 * (1 + daily_returns).cumprod()
+
+        return simulations
+    except Exception as e:
+        st.error(f"Error in Monte Carlo simulation: {e}")
+        return None
+
+# Generate recommendations
+def generate_recommendations(stock_data, financial_ratios, period=30):
+    recommendations = []
+
+    # Analyze stock trend
+    if len(stock_data) >= period:
+        trend = "Upward" if stock_data['Close'].iloc[-1] > stock_data['Close'].iloc[-period] else "Downward"
+        if trend == "Upward":
+            recommendations.append(f"The stock is in an upward trend over the last {period} days. Consider holding or buying more.")
+        elif trend == "Downward":
+            recommendations.append(f"The stock is in a downward trend over the last {period} days. Consider selling or setting stop-loss orders.")
+    else:
+        recommendations.append("Insufficient data to determine the stock trend.")
+
+    # Analyze financial ratios
+    benchmarks = {
+        "Volatility": "15%",
+        "Max Drawdown": "20%",
+        "Sharpe Ratio": "1.0",
+        "VaR (95%)": "5%"
+    }
+    for ratio, value in financial_ratios.items():
+        if ratio in benchmarks:
+            recommendations.append(f"{ratio}: {value} (Benchmark: {benchmarks[ratio]})")
+
+    return recommendations
+
 # Prepare data for LSTM
 def prepare_lstm_data(data, look_back=60):
     scaler = MinMaxScaler(feature_range=(0, 1))
@@ -216,6 +285,34 @@ def main():
                 fig.update_layout(title=f"Stock Price for {stock_ticker}", xaxis_title="Date", yaxis_title="Price")
                 st.plotly_chart(fig)
 
+    elif choice == "Monte Carlo Simulation":
+        st.header("Monte Carlo Simulation")
+        stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
+        if st.button("Submit"):
+            stock_data = fetch_stock_data(stock_ticker)
+            if not stock_data.empty:
+                simulations = monte_carlo_simulation(stock_data)
+                if simulations is not None:
+                    fig = go.Figure()
+                    for i in range(min(10, simulations.shape[1])):  # Plot first 10 simulations
+                        fig.add_trace(go.Scatter(
+                            x=np.arange(simulations.shape[0]),
+                            y=simulations[:, i],
+                            mode='lines',
+                            name=f'Simulation {i+1}'
+                        ))
+                    fig.update_layout(title="Monte Carlo Simulation", xaxis_title="Days", yaxis_title="Price")
+                    st.plotly_chart(fig)
+
+    elif choice == "Financial Ratios":
+        st.header("Financial Ratios")
+        stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
+        if st.button("Submit"):
+            stock_data = fetch_stock_data(stock_ticker)
+            if not stock_data.empty:
+                risk_metrics = calculate_risk_metrics(stock_data)
+                st.table(pd.DataFrame(list(risk_metrics.items()), columns=["Ratio", "Value"]))
+
     elif choice == "News Sentiment":
         st.header("News Sentiment")
         stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
@@ -244,6 +341,18 @@ def main():
                     st.subheader(article.get('title', 'No Title Available'))
                     st.write(article.get('description', 'No Description Available'))
                     st.write(f"Sentiment: {article.get('sentiment', 'N/A')}")
+
+    elif choice == "Recommendations":
+        st.header("Recommendations")
+        stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
+        period = st.number_input("Enter Analysis Period (days)", value=30)
+        if st.button("Submit"):
+            stock_data = fetch_stock_data(stock_ticker)
+            if not stock_data.empty:
+                financial_ratios = calculate_risk_metrics(stock_data)
+                recommendations = generate_recommendations(stock_data, financial_ratios, period)
+                for recommendation in recommendations:
+                    st.write(recommendation)
 
     elif choice == "Predictions":
         st.header("Predictions")
