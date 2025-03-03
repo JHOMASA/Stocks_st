@@ -1,5 +1,3 @@
-# Initialize Cohere client
-co = cohere.Client("")  # Replace with your valid API key
 import streamlit as st
 import yfinance as yf
 import pandas as pd
