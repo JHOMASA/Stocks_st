@@ -304,7 +304,7 @@ def fetch_stock_data(symbol):
 # Fetch news articles with caching
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def fetch_news(query):
-    url = f"https://newsapi.org/v2/everything?q={query}&apiKey=3f8e6bb135c800afcadd1aa"  # Replace with your NewsAPI key
+    url = f"https://newsapi.org/v2/everything?q={query}&apiKey=3f8e6bb1fb72490b835c800afcadd1aa"  # Replace with your NewsAPI key
     try:
         response = requests.get(url)
         if response.status_code == 200:
