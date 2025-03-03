@@ -288,7 +288,7 @@ def create_glitchy_button(text):
     """
 
 # Fetch stock data with caching
-@st.cache(ttl=3600)  # Cache for 1 hour
+@st.cache_data(ttl=3600)  # Cache for 1 hour
 def fetch_stock_data(symbol):
     try:
         stock = yf.Ticker(symbol)
@@ -302,7 +302,7 @@ def fetch_stock_data(symbol):
         return pd.DataFrame()
 
 # Fetch news articles with caching
-@st.cache(ttl=3600)  # Cache for 1 hour
+@st.cache_data(ttl=3600)  # Cache for 1 hour
 def fetch_news(query):
     url = f"https://newsapi.org/v2/everything?q={query}&apiKey=3f8e6bb1fb72490b835c800afcadd1aa"  # Replace with your NewsAPI key
     try:
@@ -334,24 +334,6 @@ def analyze_news_sentiment(articles):
             st.error(f"Error analyzing sentiment for article: {text}. Error: {e}")
             article["sentiment"] = "ERROR"
     return sentiment_counts
-
-# Calculate risk metrics
-def calculate_risk_metrics(stock_data):
-    try:
-        returns = stock_data['Close'].pct_change().dropna()
-        volatility = returns.std() * np.sqrt(252)  # Annualized volatility
-        max_drawdown = (stock_data['Close'] / stock_data['Close'].cummax() - 1).min()
-        sharpe_ratio = returns.mean() / returns.std() * np.sqrt(252)  # Annualized Sharpe Ratio
-        var_95 = np.percentile(returns, 5)  # Value at Risk (95% confidence)
-        return {
-            "Volatility": f"{volatility:.2%}",
-            "Max Drawdown": f"{max_drawdown:.2%}",
-            "Sharpe Ratio": f"{sharpe_ratio:.2f}",
-            "VaR (95%)": f"{var_95:.2%}"
-        }
-    except Exception as e:
-        st.error(f"Error calculating risk metrics: {e}")
-        return {}
 
 # Streamlit App
 def main():
@@ -535,5 +517,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
