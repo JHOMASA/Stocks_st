@@ -15,13 +15,17 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 import streamlit as st
 import plotly.graph_objects as go
-from transformers import pipeline
 
 # Initialize Cohere client
 co = cohere.Client("YYvexoWfYcfq9dxlWGt0EluWfYwfWwx5fbd6XJ4Aj")  # Replace with your Cohere API key
 
 # Initialize sentiment analysis pipeline
-sentiment_pipeline = pipeline("sentiment-analysis")
+try:
+    from transformers import pipeline
+    sentiment_pipeline = pipeline("sentiment-analysis")
+except Exception as e:
+    st.warning(f"Failed to load sentiment-analysis pipeline. Error: {e}")
+    sentiment_pipeline = None
 
 # Fetch stock data
 def fetch_stock_data(symbol):
@@ -55,8 +59,10 @@ def analyze_news_sentiment(articles):
         title = article.get("title", "")
         description = article.get("description", "")
         text = f"{title}. {description}"
+        sentiment = "N/A"  # Default value
+
         try:
-            # Use Cohere for sentiment analysis
+            # Try Cohere API first
             response = co.classify(
                 model="large",
                 inputs=[text],
@@ -68,10 +74,14 @@ def analyze_news_sentiment(articles):
             )
             sentiment = response.classifications[0].prediction
         except Exception as e:
-            # Fallback to Hugging Face pipeline if Cohere fails
-            st.warning(f"Cohere API failed. Using Hugging Face pipeline for sentiment analysis. Error: {e}")
-            result = sentiment_pipeline(text)[0]
-            sentiment = result['label'].upper()  # Convert to uppercase to match Cohere's format
+            st.warning(f"Cohere API failed. Error: {e}")
+            if sentiment_pipeline is not None:
+                try:
+                    # Fallback to Hugging Face pipeline
+                    result = sentiment_pipeline(text)[0]
+                    sentiment = result['label'].upper()  # Convert to uppercase
+                except Exception as e:
+                    st.warning(f"Hugging Face pipeline failed. Error: {e}")
 
         article["sentiment"] = sentiment
         sentiment_counts[sentiment] += 1
@@ -421,4 +431,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
