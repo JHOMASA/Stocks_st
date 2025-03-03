@@ -289,6 +289,81 @@ def main():
                 fig.update_layout(title=f"Stock Price for {stock_ticker}", xaxis_title="Date", yaxis_title="Price")
                 st.plotly_chart(fig)
 
+    elif choice == "Monte Carlo Simulation":
+        st.header("Monte Carlo Simulation")
+        stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
+        if st.button("Submit"):
+            stock_data = fetch_stock_data(stock_ticker)
+            if not stock_data.empty:
+                simulations = monte_carlo_simulation(stock_data)
+                if simulations is not None:
+                    fig = go.Figure()
+                    for i in range(min(10, simulations.shape[1])):  # Plot first 10 simulations
+                        fig.add_trace(go.Scatter(
+                            x=np.arange(simulations.shape[0]),
+                            y=simulations[:, i],
+                            mode='lines',
+                            name=f'Simulation {i+1}'
+                        ))
+                    fig.update_layout(title="Monte Carlo Simulation", xaxis_title="Days", yaxis_title="Price")
+                    st.plotly_chart(fig)
+
+    elif choice == "Financial Ratios":
+        st.header("Financial Ratios")
+        stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
+        if st.button("Submit"):
+            stock_data = fetch_stock_data(stock_ticker)
+            if not stock_data.empty:
+                risk_metrics = calculate_risk_metrics(stock_data)
+                st.table(pd.DataFrame(list(risk_metrics.items()), columns=["Ratio", "Value"]))
+
+    elif choice == "News Sentiment":
+        st.header("News Sentiment Analysis")
+        stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
+        if st.button("Submit"):
+            articles = fetch_news(stock_ticker)
+            if articles:
+                sentiment_counts = analyze_news_sentiment(articles)
+                fig = go.Figure(data=[go.Bar(
+                    x=list(sentiment_counts.keys()),
+                    y=list(sentiment_counts.values())
+                )])
+                fig.update_layout(
+                    title="News Sentiment Analysis",
+                    xaxis_title="Sentiment",
+                    yaxis_title="Count"
+                )
+                st.plotly_chart(fig)
+
+    elif choice == "Latest News":
+        st.header("Latest News")
+        stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
+        if st.button("Submit"):
+            articles = fetch_news(stock_ticker)
+            if articles:
+                try:
+                    sentiment_counts = analyze_news_sentiment(articles)
+                    for article in articles[:5]:  # Display top 5 articles
+                        st.subheader(article.get('title', 'No Title Available'))
+                        st.write(article.get('description', 'No Description Available'))
+                        st.write(f"Sentiment: {article.get('sentiment', 'N/A')}")
+                except Exception as e:
+                    st.error(f"Error processing articles: {e}")
+            else:
+                st.warning("No news articles found for this stock ticker.")
+
+    elif choice == "Recommendations":
+        st.header("Recommendations")
+        stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
+        period = st.number_input("Enter Analysis Period (days)", value=30)
+        if st.button("Submit"):
+            stock_data = fetch_stock_data(stock_ticker)
+            if not stock_data.empty:
+                financial_ratios = calculate_risk_metrics(stock_data)
+                recommendations = generate_recommendations(stock_data, financial_ratios, period)
+                for recommendation in recommendations:
+                    st.write(recommendation)
+
     elif choice == "Predictions":
         st.header("Predictions")
         stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
@@ -304,21 +379,43 @@ def main():
                             model, scaler = train_lstm_model(stock_data)
                             predictions = predict_lstm(model, scaler, stock_data)
 
+                    elif model_type == "XGBoost":
+                        model = train_xgboost_model(stock_data)
+                        predictions = predict_xgboost(model, stock_data)
+
+                    elif model_type == "ARIMA":
+                        model = train_arima_model(stock_data)
+                        predictions = predict_arima(model)
+
                     elif model_type == "Prophet":
                         model = train_prophet_model(stock_data)
                         predictions = predict_prophet(model)
 
-                    # Plot predictions
+                    elif model_type == "Random Forest":
+                        model = train_random_forest_model(stock_data)
+                        predictions = predict_random_forest(model, stock_data)
+
+                    elif model_type == "Linear Regression":
+                        model = train_linear_regression_model(stock_data)
+                        predictions = predict_linear_regression(model, stock_data)
+
+                    elif model_type == "Moving Average":
+                        predictions = predict_moving_average(stock_data)
+
+                    # Create a date range for the predictions
                     last_date = stock_data.index[-1]
-                    future_dates = pd.date_range(start=last_date, periods=31, freq='B')[1:]
-                    if len(predictions) == len(future_dates):
+                    future_dates = pd.date_range(start=last_date, periods=31, freq='B')[1:]  # Exclude the last date
+
+                    # Ensure predictions and future_dates have the same length
+                    if len(predictions) != len(future_dates):
+                        st.error("Error: Predictions and future_dates length mismatch.")
+                    else:
+                        # Plot the graph
                         fig = go.Figure()
                         fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data['Close'], mode='lines', name='Historical Data'))
                         fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Predicted Data'))
                         fig.update_layout(title=f"Stock Price Predictions for {stock_ticker}", xaxis_title="Date", yaxis_title="Price")
                         st.plotly_chart(fig)
-                    else:
-                        st.error("Error: Predictions and future_dates length mismatch.")
 
                 except Exception as e:
                     st.error(f"Error in predictions: {e}")
