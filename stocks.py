@@ -56,7 +56,7 @@ def analyze_news_sentiment(articles):
         try:
             # Use Cohere API for sentiment analysis
             response = co.classify(
-                model="large",
+                model="your-fine-tuned-model-id",  # Replace with your fine-tuned model ID
                 inputs=[text],
                 examples=[
                     {"text": "This is great news!", "label": "POSITIVE"},
@@ -65,6 +65,7 @@ def analyze_news_sentiment(articles):
                 ]
             )
             sentiment = response.classifications[0].prediction
+            time.sleep(1.5)  # Add a delay to stay within rate limits
         except Exception as e:
             st.warning(f"Cohere API failed. Error: {e}")
             # Fallback to TextBlob for sentiment analysis
@@ -159,7 +160,7 @@ def prepare_lstm_data(data, look_back=60):
         X.append(scaled_data[i-look_back:i, 0])
         y.append(scaled_data[i, 0])
     X, y = np.array(X), np.array(y)
-    X = np.reshape(X, (X.shape[0], X.shape[1], 1))
+    X = np.reshape(X, (X.shape[0], X.shape[1], 1))  # Reshape for LSTM input
     return X, y, scaler
 
 # Train LSTM model
@@ -177,7 +178,7 @@ def train_lstm_model(data):
 # Predict using LSTM
 def predict_lstm(model, scaler, data, look_back=60):
     last_sequence = scaler.transform(data[['Close']].values[-look_back:])
-    last_sequence = np.reshape(last_sequence, (1, look_back, 1))
+    last_sequence = np.reshape(last_sequence, (1, look_back, 1))  # Reshape for LSTM input
     predictions = []
     for _ in range(30):  # Predict next 30 days
         pred = model.predict(last_sequence)
@@ -420,11 +421,11 @@ def main():
                     elif model_type == "Moving Average":
                         predictions = predict_moving_average(stock_data)
 
-                    # Create a date range for the predictions
+                # Create a date range for the predictions
                     last_date = stock_data.index[-1]
                     future_dates = pd.date_range(start=last_date, periods=31, freq='B')[1:]  # Exclude the last date
 
-                    # Ensure predictions and future_dates have the same length
+                # Ensure predictions and future_dates have the same length
                     if len(predictions) != len(future_dates):
                         st.error("Error: Predictions and future_dates length mismatch.")
                     else:
