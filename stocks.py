@@ -335,6 +335,44 @@ def analyze_news_sentiment(articles):
             article["sentiment"] = "ERROR"
     return sentiment_counts
 
+# Calculate risk metrics
+def calculate_risk_metrics(stock_data):
+    try:
+        returns = stock_data['Close'].pct_change().dropna()
+        volatility = returns.std() * np.sqrt(252)  # Annualized volatility
+        max_drawdown = (stock_data['Close'] / stock_data['Close'].cummax() - 1).min()
+        sharpe_ratio = returns.mean() / returns.std() * np.sqrt(252)  # Annualized Sharpe Ratio
+        var_95 = np.percentile(returns, 5)  # Value at Risk (95% confidence)
+        return {
+            "Volatility": f"{volatility:.2%}",
+            "Max Drawdown": f"{max_drawdown:.2%}",
+            "Sharpe Ratio": f"{sharpe_ratio:.2f}",
+            "VaR (95%)": f"{var_95:.2%}"
+        }
+    except Exception as e:
+        st.error(f"Error calculating risk metrics: {e}")
+        return {}
+
+# Monte Carlo Simulation
+def monte_carlo_simulation(stock_data, n_simulations=1000, n_days=252):
+    try:
+        returns = stock_data['Close'].pct_change().dropna()
+        mu = returns.mean()
+        sigma = returns.std()
+        last_price = stock_data['Close'].iloc[-1]
+
+        simulations = np.zeros((n_days, n_simulations))
+        simulations[0] = last_price
+
+        for day in range(1, n_days):
+            shock = np.random.normal(mu, sigma, n_simulations)
+            simulations[day] = simulations[day - 1] * (1 + shock)
+
+        return simulations
+    except Exception as e:
+        st.error(f"Error in Monte Carlo Simulation: {e}")
+        return None
+
 # Streamlit App
 def main():
     st.markdown(custom_css, unsafe_allow_html=True)
