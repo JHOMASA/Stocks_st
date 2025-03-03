@@ -19,6 +19,11 @@ from textblob import TextBlob  # Fallback sentiment analysis
 # Initialize Cohere client
 co = cohere.Client("gpWuZqkXdfhfbYkjLlyRnc5x2rj0ml1IqfULfjt0")  # Replace with your valid API key
 
+# Analyze sentiment of news articles
+tokenizer = BertTokenizer.from_pretrained("yiyanghkust/finbert-tone")
+model = BertForSequenceClassification.from_pretrained("yiyanghkust/finbert-tone")
+
+
 # Fetch stock data
 def fetch_stock_data(symbol):
     try:
@@ -44,39 +49,32 @@ def fetch_news(query):
         st.error(f"Error fetching news: {e}")
         return []
 
-# Analyze sentiment of news articles
 def analyze_news_sentiment(articles):
-    sentiment_counts = {"POSITIVE": 0, "NEGATIVE": 0, "NEUTRAL": 0, "ERROR": 0}
+    sentiment_counts = {"Positive": 0, "Negative": 0, "Neutral": 0, "Error": 0}
     for article in articles:
         title = article.get("title", "")
         description = article.get("description", "")
         text = f"{title}. {description}"
-        sentiment = "ERROR"  # Default value
+        sentiment = "Error"  # Default value
 
         try:
-            # Use Cohere API for sentiment analysis
-            response = co.classify(
-                model="your-fine-tuned-model-id",  # Replace with your fine-tuned model ID
-                inputs=[text],
-                examples=[
-                    {"text": "This is great news!", "label": "POSITIVE"},
-                    {"text": "This is terrible news!", "label": "NEGATIVE"},
-                    {"text": "This is neutral news.", "label": "NEUTRAL"}
-                ]
-            )
-            sentiment = response.classifications[0].prediction
-            time.sleep(1.5)  # Add a delay to stay within rate limits
+            # Tokenize input text
+            inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
+            # Get model predictions
+            outputs = model(**inputs)
+            probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
+            pred_label = torch.argmax(probs, dim=1).item()
+
+            # Map prediction to sentiment
+            if pred_label == 0:
+                sentiment = "Negative"
+            elif pred_label == 1:
+                sentiment = "Neutral"
+            elif pred_label == 2:
+                sentiment = "Positive"
         except Exception as e:
-            st.warning(f"Cohere API failed. Error: {e}")
-            # Fallback to TextBlob for sentiment analysis
-            blob = TextBlob(text)
-            polarity = blob.sentiment.polarity
-            if polarity > 0:
-                sentiment = "POSITIVE"
-            elif polarity < 0:
-                sentiment = "NEGATIVE"
-            else:
-                sentiment = "NEUTRAL"
+            st.warning(f"Sentiment analysis failed. Error: {e}")
+            sentiment = "Error"
 
         article["sentiment"] = sentiment
         sentiment_counts[sentiment] += 1
@@ -355,10 +353,10 @@ def main():
                     try:
                         sentiment_counts = analyze_news_sentiment(articles)
                         st.subheader("Sentiment Summary")
-                        st.write(f"Positive: {sentiment_counts['POSITIVE']}")
-                        st.write(f"Negative: {sentiment_counts['NEGATIVE']}")
-                        st.write(f"Neutral: {sentiment_counts['NEUTRAL']}")
-                        st.write(f"Errors: {sentiment_counts['ERROR']}")
+                        st.write(f"Positive: {sentiment_counts['Positive']}")
+                        st.write(f"Negative: {sentiment_counts['Negative']}")
+                        st.write(f"Neutral: {sentiment_counts['Neutral']}")
+                        st.write(f"Errors: {sentiment_counts['Error']}")
 
                         st.subheader("Top 5 News Articles")
                         for article in articles[:5]:  # Display top 5 articles
@@ -367,8 +365,8 @@ def main():
                             st.write(f"**Sentiment:** {article.get('sentiment', 'N/A')}")
                             st.write("---")
                     except Exception as e:
-                        st.error(f"Error processing articles: {e}")
-                else:
+                    st.error(f"Error processing articles: {e}")
+                 else:
                     st.warning("No news articles found for this stock ticker.")
 
     elif choice == "Recommendations":
