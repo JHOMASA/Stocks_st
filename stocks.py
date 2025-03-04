@@ -72,226 +72,33 @@ def display_chat():
 
 # Chat Interface
 def chat_interface(choice):
-    chat_html = f"""
-    <style>
-        body {{
-            height: 100%;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            font-family: sans-serif;
-            background: #1c1e22;
-        }}
-        .chatbox {{
-            width: 100%;
-            height: 500px;
-            max-height: 500px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            box-shadow: 0 0 4px rgba(0,0,0,.14),0 4px 8px rgba(0,0,0,.28);
-        }}
-        .chat-window {{
-            flex: auto;
-            max-height: calc(100% - 60px);
-            background: #2f323b;
-            overflow: auto;
-            padding: 10px;
-        }}
-        .chat-input {{
-            flex: 0 0 auto;
-            height: 60px;
-            background: #40434e;
-            border-top: 1px solid #2671ff;
-            box-shadow: 0 0 4px rgba(0,0,0,.14),0 4px 8px rgba(0,0,0,.28);
-        }}
-        .chat-input input {{
-            height: 59px;
-            line-height: 60px;
-            outline: 0 none;
-            border: none;
-            width: calc(100% - 60px);
-            color: white;
-            text-indent: 10px;
-            font-size: 12pt;
-            padding: 0;
-            background: #40434e;
-        }}
-        .chat-input button {{
-            float: right;
-            outline: 0 none;
-            border: none;
-            background: rgba(255,255,255,.25);
-            height: 40px;
-            width: 40px;
-            border-radius: 50%;
-            padding: 2px 0 0 0;
-            margin: 10px;
-            transition: all 0.15s ease-in-out;
-        }}
-        .msg-container {{
-            position: relative;
-            display: inline-block;
-            width: 100%;
-            margin: 0 0 10px 0;
-            padding: 0;
-            animation: fadeIn 0.5s ease-in-out;
-        }}
-        @keyframes fadeIn {{
-            from {{ opacity: 0; transform: translateY(10px); }}
-            to {{ opacity: 1; transform: translateY(0); }}
-        }}
-        .msg-box {{
-            display: flex;
-            background: #5b5e6c;
-            padding: 10px 10px 0 10px;
-            border-radius: 0 6px 6px 0;
-            max-width: 80%;
-            width: auto;
-            float: left;
-            box-shadow: 0 0 2px rgba(0,0,0,.12),0 2px 4px rgba(0,0,0,.24);
-        }}
-        .user-img {{
-            display: inline-block;
-            border-radius: 50%;
-            height: 40px;
-            width: 40px;
-            background: #2671ff;
-            margin: 0 10px 10px 0;
-        }}
-        .flr {{
-            flex: 1 0 auto;
-            display: flex;
-            flex-direction: column;
-            width: calc(100% - 50px);
-        }}
-        .messages {{
-            flex: 1 0 auto;
-        }}
-        .msg {{
-            display: inline-block;
-            font-size: 11pt;
-            line-height: 13pt;
-            color: rgba(255,255,255,.7);
-            margin: 0 0 4px 0;
-        }}
-        .msg:first-of-type {{
-            margin-top: 8px;
-        }}
-        .timestamp {{
-            color: rgba(0,0,0,.38);
-            font-size: 8pt;
-            margin-bottom: 10px;
-        }}
-        .username {{
-            margin-right: 3px;
-        }}
-        .posttime {{
-            margin-left: 3px;
-        }}
-        .msg-self .msg-box {{
-            border-radius: 6px 0 0 6px;
-            background: #2671ff;
-            float: right;
-        }}
-        .msg-self .user-img {{
-            margin: 0 0 10px 10px;
-        }}
-        .msg-self .msg {{
-            text-align: right;
-        }}
-        .msg-self .timestamp {{
-            text-align: right;
-        }}
-    </style>
-    <div class="chatbox">
-        <div class="chat-window" id="chat-window">
-            <div class="msg-container msg-remote">
-                <div class="msg-box">
-                    <img class="user-img" src="https://gravatar.com/avatar/00034587632094500000000000000000?d=retro" />
-                    <div class="flr">
-                        <div class="messages">
-                            <p class="msg">Hello! You selected <strong>{choice}</strong>. How can I assist you?</p>
-                        </div>
-                        <span class="timestamp"><span class="username">Bot</span>&bull;<span class="posttime">Now</span></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <form class="chat-input" onsubmit="sendMessage(event, '{choice}')">
-            <input type="text" id="chat-input" autocomplete="on" placeholder="Type a message" />
-            <button type="submit">
-                <svg style="width:24px;height:24px" viewBox="0 0 24 24"><path fill="rgba(0,0,0,.38)" d="M17,12L12,17V14H8V10H12V7L17,12M21,16.5C21,16.88 20.79,17.21 20.47,17.38L12.57,21.82C12.41,21.94 12.21,22 12,22C11.79,22 11.59,21.94 11.43,21.82L3.53,17.38C3.21,17.21 3,16.88 3,16.5V7.5C3,7.12 3.21,6.79 3.53,6.62L11.43,2.18C11.59,2.06 11.79,2 12,2C12.21,2 12.41,2.06 12.57,2.18L20.47,6.62C20.79,6.79 21,7.12 21,7.5V16.5M12,4.15L5,8.09V15.91L12,19.85L19,15.91V8.09L12,4.15Z" /></svg>
-            </button>
-        </form>
-    </div>
-    <script>
-        function sendMessage(event, choice) {{
-            event.preventDefault();
-            const input = document.getElementById('chat-input');
-            const message = input.value.trim();
-            if (message === '') return;
+    st.markdown("### Chat Interface")
+    display_chat()
 
-            // Add user message to chat window
-            const chatWindow = document.getElementById('chat-window');
-            const userMessage = `
-                <div class="msg-container msg-self">
-                    <div class="msg-box">
-                        <div class="flr">
-                            <div class="messages">
-                                <p class="msg">${{message}}</p>
-                            </div>
-                            <span class="timestamp"><span class="username">You</span>&bull;<span class="posttime">Now</span></span>
-                        </div>
-                        <img class="user-img" src="https://gravatar.com/avatar/56234674574535734573000000000001?d=retro" />
-                    </div>
-                </div>
-            `;
-            chatWindow.insertAdjacentHTML('beforeend', userMessage);
+    # Input for user message
+    user_input = st.text_input("Type a message...", key="chat_input")
 
-            // Clear input
-            input.value = '';
+    if st.button("Send"):
+        if user_input.strip() != "":
+            # Add user message to chat history
+            add_message("user", user_input)
 
-            // Auto-scroll to the latest message
-            chatWindow.scrollTop = chatWindow.scrollHeight;
+            # Generate bot response using Cohere
+            prompt = f"""
+            You are a financial analyst. The user has selected the section: {choice}.
+            User's message: {user_input}
+            Provide a detailed and helpful response.
+            """
+            bot_response = generate_response(prompt)
 
-            // Send message to backend using AJAX
-            fetch('/process_message', {{
-                method: 'POST',
-                headers: {{
-                    'Content-Type': 'application/json',
-                }},
-                body: JSON.stringify({{
-                    message: message,
-                    choice: choice
-                }})
-            }})
-            .then(response => response.json())
-            .then(data => {{
-                // Add bot response to chat window
-                const botMessage = `
-                    <div class="msg-container msg-remote">
-                        <div class="msg-box">
-                            <img class="user-img" src="https://gravatar.com/avatar/00034587632094500000000000000000?d=retro" />
-                            <div class="flr">
-                                <div class="messages">
-                                    <p class="msg">${{data.response}}</p>
-                                </div>
-                                <span class="timestamp"><span class="username">Bot</span>&bull;<span class="posttime">Now</span></span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                chatWindow.insertAdjacentHTML('beforeend', botMessage);
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-            }})
-            .catch(error => {{
-                console.error('Error:', error);
-            }});
-        }}
-    </script>
-    """
-    st.components.v1.html(chat_html, height=600)
+            # Add bot response to chat history
+            add_message("bot", bot_response)
+
+            # Clear input
+            st.session_state.chat_input = ""
+
+            # Rerun the app to update the chat interface
+            st.experimental_rerun()
 
 # Main App
 def main():
@@ -549,4 +356,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
