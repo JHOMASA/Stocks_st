@@ -6,7 +6,6 @@ import requests
 from textblob import TextBlob  # Fallback sentiment analysis
 import plotly.graph_objects as go
 import cohere
-
 # Initialize Cohere client
 co = cohere.Client("gpWuZqkXdfhfbYkjLlyRnc5x2rj0ml1IqfULfjt0")  # Replace with your Cohere API key
 
