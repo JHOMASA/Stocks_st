@@ -317,7 +317,7 @@ def main():
             if not stock_data.empty:
                 risk_metrics = calculate_risk_metrics(stock_data)
                 st.write("### Financial Ratios")
-                st.table(pd.DataFrame(list(risk_metrics.items()), columns=["Ratio", "Value"])
+                st.table(pd.DataFrame(list(risk_metrics.items()), columns=["Ratio", "Value"]))
 
     elif choice == "News Sentiment":
         st.header("News Sentiment Analysis")
