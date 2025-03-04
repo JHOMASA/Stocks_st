@@ -5,15 +5,10 @@ import numpy as np
 import requests
 from textblob import TextBlob  # Fallback sentiment analysis
 import plotly.graph_objects as go
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import train_test_split
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
-from xgboost import XGBRegressor
-from statsmodels.tsa.arima.model import ARIMA
-from prophet import Prophet
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import LinearRegression
+import cohere
+
+# Initialize Cohere client
+co = cohere.Client("gpWuZqkXdfhfbYkjLlyRnc5x2rj0ml1IqfULfjt0")  # Replace with your Cohere API key
 
 # Fetch stock data
 def fetch_stock_data(symbol):
@@ -85,30 +80,6 @@ def calculate_risk_metrics(stock_data):
         st.error(f"Error calculating risk metrics: {e}")
         return {}
 
-# Monte Carlo Simulation
-def monte_carlo_simulation(stock_data, num_simulations=1000, days=252):
-    try:
-        if stock_data.empty:
-            raise ValueError("No stock data available for simulation.")
-
-        returns = stock_data['Close'].pct_change().dropna()
-        if len(returns) < 2:
-            raise ValueError("Insufficient data to calculate returns.")
-
-        mu = returns.mean()
-        sigma = returns.std()
-        simulations = np.zeros((days, num_simulations))
-        S0 = stock_data['Close'].iloc[-1]  # Last observed price
-
-        for i in range(num_simulations):
-            daily_returns = np.random.normal(mu, sigma, days)
-            simulations[:, i] = S0 * (1 + daily_returns).cumprod()
-
-        return simulations
-    except Exception as e:
-        st.error(f"Error in Monte Carlo simulation: {e}")
-        return None
-
 # Generate recommendations
 def generate_recommendations(stock_data, financial_ratios, period=30):
     recommendations = []
@@ -136,137 +107,149 @@ def generate_recommendations(stock_data, financial_ratios, period=30):
 
     return recommendations
 
-# Prepare data for LSTM
-def prepare_lstm_data(data, look_back=60):
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled_data = scaler.fit_transform(data[['Close']].values)
-    X, y = [], []
-    for i in range(look_back, len(scaled_data)):
-        X.append(scaled_data[i-look_back:i, 0])
-        y.append(scaled_data[i, 0])
-    X, y = np.array(X), np.array(y)
-    X = np.reshape(X, (X.shape[0], X.shape[1], 1))
-    return X, y, scaler
+# Chat interface
+def chat_interface():
+    st.markdown(
+        """
+        <style>
+        .chatbox {
+            width: 100%;
+            height: 400px;
+            max-height: 400px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 0 4px rgba(0,0,0,.14),0 4px 8px rgba(0,0,0,.28);
+        }
+        .chat-window {
+            flex: auto;
+            max-height: calc(100% - 60px);
+            background: #2f323b;
+            overflow: auto;
+            padding: 10px;
+        }
+        .chat-input {
+            flex: 0 0 auto;
+            height: 60px;
+            background: #40434e;
+            border-top: 1px solid #2671ff;
+            box-shadow: 0 0 4px rgba(0,0,0,.14),0 4px 8px rgba(0,0,0,.28);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+        }
+        .chat-input input {
+            height: 40px;
+            line-height: 40px;
+            outline: 0 none;
+            border: none;
+            width: calc(100% - 60px);
+            color: white;
+            text-indent: 10px;
+            font-size: 12pt;
+            padding: 0;
+            background: #40434e;
+        }
+        .chat-input button {
+            float: right;
+            outline: 0 none;
+            border: none;
+            background: rgba(255,255,255,.25);
+            height: 40px;
+            width: 40px;
+            border-radius: 50%;
+            padding: 2px 0 0 0;
+            margin: 10px;
+            transition: all 0.15s ease-in-out;
+        }
+        .msg-container {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            margin: 0 0 10px 0;
+            padding: 0;
+        }
+        .msg-box {
+            display: flex;
+            background: #5b5e6c;
+            padding: 10px 10px 0 10px;
+            border-radius: 0 6px 6px 0;
+            max-width: 80%;
+            width: auto;
+            float: left;
+            box-shadow: 0 0 2px rgba(0,0,0,.12),0 2px 4px rgba(0,0,0,.24);
+        }
+        .msg-self .msg-box {
+            border-radius: 6px 0 0 6px;
+            background: #2671ff;
+            float: right;
+        }
+        .msg {
+            display: inline-block;
+            font-size: 11pt;
+            line-height: 13pt;
+            color: rgba(255,255,255,.7);
+            margin: 0 0 4px 0;
+        }
+        .timestamp {
+            color: rgba(0,0,0,.38);
+            font-size: 8pt;
+            margin-bottom: 10px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
-# Train LSTM model
-def train_lstm_model(data):
-    X, y, scaler = prepare_lstm_data(data)
-    model = Sequential()
-    model.add(LSTM(units=50, return_sequences=True, input_shape=(X.shape[1], 1)))
-    model.add(LSTM(units=50, return_sequences=False))
-    model.add(Dense(units=25))
-    model.add(Dense(units=1))
-    model.compile(optimizer='adam', loss='mean_squared_error')
-    model.fit(X, y, batch_size=32, epochs=10)
-    return model, scaler
+    st.markdown(
+        """
+        <div class="chatbox">
+            <div class="chat-window" id="chat-window">
+                <div class="msg-container msg-remote">
+                    <div class="msg-box">
+                        <div class="flr">
+                            <div class="messages">
+                                <p class="msg">Hello! How can I assist you today?</p>
+                            </div>
+                            <span class="timestamp"><span class="username">Bot</span>&bull;<span class="posttime">Now</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="chat-input">
+                <input type="text" id="chat-input" placeholder="Type a message" />
+                <button onclick="sendMessage()">
+                    <svg style="width:24px;height:24px" viewBox="0 0 24 24"><path fill="rgba(0,0,0,.38)" d="M17,12L12,17V14H8V10H12V7L17,12M21,16.5C21,16.88 20.79,17.21 20.47,17.38L12.57,21.82C12.41,21.94 12.21,22 12,22C11.79,22 11.59,21.94 11.43,21.82L3.53,17.38C3.21,17.21 3,16.88 3,16.5V7.5C3,7.12 3.21,6.79 3.53,6.62L11.43,2.18C11.59,2.06 11.79,2 12,2C12.21,2 12.41,2.06 12.57,2.18L20.47,6.62C20.79,6.79 21,7.12 21,7.5V16.5M12,4.15L5,8.09V15.91L12,19.85L19,15.91V8.09L12,4.15Z" /></svg>
+                </button>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-# Predict using LSTM
-def predict_lstm(model, scaler, data, look_back=60):
-    last_sequence = scaler.transform(data[['Close']].values[-look_back:])
-    last_sequence = np.reshape(last_sequence, (1, look_back, 1))
-    predictions = []
-    for _ in range(30):  # Predict next 30 days
-        pred = model.predict(last_sequence)
-        predictions.append(pred[0][0])
-        last_sequence = np.append(last_sequence[:, 1:, :], [[pred]], axis=1)
-    predictions = scaler.inverse_transform(np.array(predictions).reshape(-1, 1))
-    return predictions.flatten()
+    # Handle chat input
+    user_input = st.text_input("Type a message", key="chat_input", on_change=send_message)
 
-# Train XGBoost model
-def train_xgboost_model(data):
-    data['Returns'] = data['Close'].pct_change()
-    data = data.dropna()
-    X = data[['Returns']].shift(1).dropna()
-    y = data['Close'][1:]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
-    model = XGBRegressor(objective='reg:squarederror', n_estimators=100)
-    model.fit(X_train, y_train)
-    return model
-
-# Predict using XGBoost
-def predict_xgboost(model, data):
-    last_return = data['Close'].pct_change().iloc[-1]
-    predictions = []
-    for _ in range(30):  # Predict next 30 days
-        pred = model.predict(np.array([[last_return]]))
-        predictions.append(pred[0])
-        last_return = (pred[0] - data['Close'].iloc[-1]) / data['Close'].iloc[-1]
-    return predictions
-
-# Train ARIMA model
-def train_arima_model(data):
-    model = ARIMA(data['Close'], order=(5, 1, 0))  # (p, d, q) parameters
-    model_fit = model.fit()
-    return model_fit
-
-# Predict using ARIMA
-def predict_arima(model, steps=30):
-    predictions = model.forecast(steps=steps)
-    return predictions
-
-# Train Prophet model
-def train_prophet_model(data):
-    df = data[['Close']].reset_index()
-    df.columns = ['ds', 'y']
-    df['ds'] = df['ds'].dt.tz_localize(None)  # Remove timezone
-    model = Prophet()
-    model.fit(df)
-    return model
-
-# Predict using Prophet
-def predict_prophet(model, periods=30):
-    future = model.make_future_dataframe(periods=periods)
-    forecast = model.predict(future)
-    return forecast['yhat'][-periods:].values
-
-# Train Random Forest model
-def train_random_forest_model(data):
-    data['Returns'] = data['Close'].pct_change()
-    data = data.dropna()
-    X = data[['Returns']].shift(1).dropna()
-    y = data['Close'][1:]
-    model = RandomForestRegressor(n_estimators=100)
-    model.fit(X, y)
-    return model
-
-# Predict using Random Forest
-def predict_random_forest(model, data, steps=30):
-    predictions = []
-    last_return = data['Close'].pct_change().iloc[-1]
-    for _ in range(steps):
-        pred = model.predict([[last_return]])
-        predictions.append(pred[0])
-        last_return = (pred[0] - data['Close'].iloc[-1]) / data['Close'].iloc[-1]
-    return predictions
-
-# Train Linear Regression model
-def train_linear_regression_model(data):
-    data['Returns'] = data['Close'].pct_change()
-    data = data.dropna()
-    X = data[['Returns']].shift(1).dropna()
-    y = data['Close'][1:]
-    model = LinearRegression()
-    model.fit(X, y)
-    return model
-
-# Predict using Linear Regression
-def predict_linear_regression(model, data, steps=30):
-    predictions = []
-    last_return = data['Close'].pct_change().iloc[-1]
-    for _ in range(steps):
-        pred = model.predict([[last_return]])
-        predictions.append(pred[0])
-        last_return = (pred[0] - data['Close'].iloc[-1]) / data['Close'].iloc[-1]
-    return predictions
-
-# Predict using Moving Average
-def predict_moving_average(data, window=30):
-    predictions = data['Close'].rolling(window=window).mean().iloc[-30:].values
-    return predictions
+# Send message to Cohere and display response
+def send_message():
+    user_input = st.session_state.chat_input
+    if user_input:
+        # Generate response using Cohere
+        response = co.generate(
+            model="command",
+            prompt=user_input,
+            max_tokens=100,
+            temperature=0.7,
+        )
+        st.session_state.chat_history.append({"user": user_input, "bot": response.generations[0].text})
 
 # Streamlit app
 def main():
-    st.title("Stock Analysis Dashboard")
+    st.title("Stock Analysis Chatbot")
+
+    # Initialize chat history
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
 
     # Sidebar for navigation
     st.sidebar.title("Navigation")
@@ -431,6 +414,9 @@ def main():
 
                 except Exception as e:
                     st.error(f"Error in predictions: {e}")
+
+    # Chat interface
+    chat_interface()
 
 if __name__ == "__main__":
     main()
