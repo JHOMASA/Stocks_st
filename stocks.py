@@ -3,6 +3,8 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import requests
+from textblob import TextBlob  # Fallback sentiment analysis
+import plotly.graph_objects as go
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.models import Sequential
@@ -12,13 +14,6 @@ from statsmodels.tsa.arima.model import ARIMA
 from prophet import Prophet
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
-import plotly.graph_objects as go
-from transformers import BertTokenizer, BertForSequenceClassification
-import torch
-
-# Load FinBERT model and tokenizer
-tokenizer = BertTokenizer.from_pretrained("yiyanghkust/finbert-tone")
-model = BertForSequenceClassification.from_pretrained("yiyanghkust/finbert-tone")
 
 # Fetch stock data
 def fetch_stock_data(symbol):
@@ -32,7 +27,7 @@ def fetch_stock_data(symbol):
 
 # Fetch news articles
 def fetch_news(query):
-    url = f"https://newsapi.org/v2/everything?q={query}&apiKey=gpWuZqkXdfhfbYkjLlyRnc5x2rj0ml1IqfULfjt0"  # Replace with your NewsAPI key
+    url = f"https://newsapi.org/v2/everything?q={query}&apiKey=your_newsapi_key_here"  # Replace with your NewsAPI key
     try:
         response = requests.get(url)
         if response.status_code == 200:
@@ -45,7 +40,7 @@ def fetch_news(query):
         st.error(f"Error fetching news: {e}")
         return []
 
-# Analyze sentiment of news articles using FinBERT
+# Analyze sentiment of news articles using TextBlob
 def analyze_news_sentiment(articles):
     sentiment_counts = {"Positive": 0, "Negative": 0, "Neutral": 0, "Error": 0}
     for article in articles:
@@ -150,7 +145,7 @@ def prepare_lstm_data(data, look_back=60):
         X.append(scaled_data[i-look_back:i, 0])
         y.append(scaled_data[i, 0])
     X, y = np.array(X), np.array(y)
-    X = np.reshape(X, (X.shape[0], X.shape[1], 1))  # Reshape for LSTM input
+    X = np.reshape(X, (X.shape[0], X.shape[1], 1))
     return X, y, scaler
 
 # Train LSTM model
@@ -168,7 +163,7 @@ def train_lstm_model(data):
 # Predict using LSTM
 def predict_lstm(model, scaler, data, look_back=60):
     last_sequence = scaler.transform(data[['Close']].values[-look_back:])
-    last_sequence = np.reshape(last_sequence, (1, look_back, 1))  # Reshape for LSTM input
+    last_sequence = np.reshape(last_sequence, (1, look_back, 1))
     predictions = []
     for _ in range(30):  # Predict next 30 days
         pred = model.predict(last_sequence)
@@ -284,6 +279,11 @@ def main():
         if st.button("Submit"):
             stock_data = fetch_stock_data(stock_ticker)
             if not stock_data.empty:
+                st.write("### Stock Data")
+                st.write(stock_data)
+
+                # Plot stock data
+                st.write("### Stock Price Chart")
                 fig = go.Figure()
                 fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data['Close'], mode='lines', name='Close Price'))
                 fig.update_layout(title=f"Stock Price for {stock_ticker}", xaxis_title="Date", yaxis_title="Price")
@@ -297,6 +297,7 @@ def main():
             if not stock_data.empty:
                 simulations = monte_carlo_simulation(stock_data)
                 if simulations is not None:
+                    st.write("### Monte Carlo Simulation Results")
                     fig = go.Figure()
                     for i in range(min(10, simulations.shape[1])):  # Plot first 10 simulations
                         fig.add_trace(go.Scatter(
@@ -315,7 +316,8 @@ def main():
             stock_data = fetch_stock_data(stock_ticker)
             if not stock_data.empty:
                 risk_metrics = calculate_risk_metrics(stock_data)
-                st.table(pd.DataFrame(list(risk_metrics.items()), columns=["Ratio", "Value"]))
+                st.write("### Financial Ratios")
+                st.table(pd.DataFrame(list(risk_metrics.items()), columns=["Ratio", "Value"])
 
     elif choice == "News Sentiment":
         st.header("News Sentiment Analysis")
@@ -324,6 +326,14 @@ def main():
             articles = fetch_news(stock_ticker)
             if articles:
                 sentiment_counts = analyze_news_sentiment(articles)
+                st.write("### Sentiment Summary")
+                st.write(f"Positive: {sentiment_counts['Positive']}")
+                st.write(f"Negative: {sentiment_counts['Negative']}")
+                st.write(f"Neutral: {sentiment_counts['Neutral']}")
+                st.write(f"Errors: {sentiment_counts['Error']}")
+
+                # Plot sentiment distribution
+                st.write("### Sentiment Distribution")
                 fig = go.Figure(data=[go.Bar(
                     x=list(sentiment_counts.keys()),
                     y=list(sentiment_counts.values())
@@ -334,6 +344,8 @@ def main():
                     yaxis_title="Count"
                 )
                 st.plotly_chart(fig)
+            else:
+                st.warning("No news articles found for this stock ticker.")
 
     elif choice == "Latest News":
         st.header("Latest News")
@@ -341,8 +353,15 @@ def main():
         if st.button("Submit"):
             articles = fetch_news(stock_ticker)
             if articles:
-                sentiment_counts = analyze_news_sentiment(articles)
-                st.write(sentiment_counts)
+                st.write("### Top 5 News Articles")
+                for article in articles[:5]:  # Display top 5 articles
+                    st.write(f"**Title:** {article.get('title', 'No Title Available')}")
+                    st.write(f"**Description:** {article.get('description', 'No Description Available')}")
+                    st.write(f"**Source:** {article.get('source', {}).get('name', 'N/A')}")
+                    st.write(f"**Published At:** {article.get('publishedAt', 'N/A')}")
+                    st.write("---")
+            else:
+                st.warning("No news articles found for this stock ticker.")
 
     elif choice == "Recommendations":
         st.header("Recommendations")
@@ -353,6 +372,7 @@ def main():
             if not stock_data.empty:
                 financial_ratios = calculate_risk_metrics(stock_data)
                 recommendations = generate_recommendations(stock_data, financial_ratios, period)
+                st.write("### Recommendations")
                 for recommendation in recommendations:
                     st.write(recommendation)
 
