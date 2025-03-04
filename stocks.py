@@ -15,6 +15,8 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 import plotly.graph_objects as go
 from textblob import TextBlob  # Fallback sentiment analysis
+from transformers import BertTokenizer, BertForSequenceClassification
+import torch
 
 # Initialize Cohere client
 co = cohere.Client("gpWuZqkXdfhfbYkjLlyRnc5x2rj0ml1IqfULfjt0")  # Replace with your valid API key
