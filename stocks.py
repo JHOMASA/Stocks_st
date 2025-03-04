@@ -32,7 +32,7 @@ def fetch_stock_data(symbol):
 
 @st.cache_data
 def fetch_news(query, api_key):
-    url = f"https://newsapi.org/v2/everything?q={query}&apiKey={3f8e6bb1fb72490b835c800afcadd1aa}"
+    url = f"https://newsapi.org/v2/everything?q={query}&apiKey={api_key}"
     try:
         response = requests.get(url)
         if response.status_code == 200:
