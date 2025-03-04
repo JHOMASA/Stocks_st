@@ -3,7 +3,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import requests
-from textblob import TextBlob
+from textblob import TextBlob  # Fallback sentiment analysis
 import plotly.graph_objects as go
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
@@ -14,9 +14,31 @@ from statsmodels.tsa.arima.model import ARIMA
 from prophet import Prophet
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
-import cohere
 
+# Fetch stock data
+def fetch_stock_data(symbol):
+    try:
+        stock = yf.Ticker(symbol)
+        stock_data = stock.history(period="1y")
+        return stock_data
+    except Exception as e:
+        st.error(f"Error fetching stock data: {e}")
+        return pd.DataFrame()
 
+# Fetch news articles
+def fetch_news(query):
+    url = f"https://newsapi.org/v2/everything?q={query}&apiKey=3f8e6bb1fb72490b835c800afcadd1aa"  # Replace with your NewsAPI key
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            articles = response.json()["articles"]
+            return articles
+        else:
+            st.error(f"NewsAPI error: {response.status_code}")
+            return []
+    except Exception as e:
+        st.error(f"Error fetching news: {e}")
+        return []
 
 # Analyze sentiment of news articles using TextBlob
 def analyze_news_sentiment(articles):
