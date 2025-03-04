@@ -55,20 +55,15 @@ def analyze_news_sentiment(articles):
         sentiment = "Error"  # Default value
 
         try:
-            # Tokenize input text
-            inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
-            # Get model predictions
-            outputs = model(**inputs)
-            probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-            pred_label = torch.argmax(probs, dim=1).item()
-
-            # Map prediction to sentiment
-            if pred_label == 0:
-                sentiment = "Negative"
-            elif pred_label == 1:
-                sentiment = "Neutral"
-            elif pred_label == 2:
+            # Use TextBlob for sentiment analysis
+            blob = TextBlob(text)
+            polarity = blob.sentiment.polarity
+            if polarity > 0:
                 sentiment = "Positive"
+            elif polarity < 0:
+                sentiment = "Negative"
+            else:
+                sentiment = "Neutral"
         except Exception as e:
             st.warning(f"Sentiment analysis failed. Error: {e}")
             sentiment = "Error"
@@ -344,27 +339,10 @@ def main():
         st.header("Latest News")
         stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
         if st.button("Submit"):
-            with st.spinner("Fetching news articles..."):
-                articles = fetch_news(stock_ticker)
-                if articles:
-                    try:
-                        sentiment_counts = analyze_news_sentiment(articles)
-                        st.subheader("Sentiment Summary")
-                        st.write(f"Positive: {sentiment_counts['Positive']}")
-                        st.write(f"Negative: {sentiment_counts['Negative']}")
-                        st.write(f"Neutral: {sentiment_counts['Neutral']}")
-                        st.write(f"Errors: {sentiment_counts['Error']}")
-
-                        st.subheader("Top 5 News Articles")
-                        for article in articles[:5]:  # Display top 5 articles
-                            st.write(f"**Title:** {article.get('title', 'No Title Available')}")
-                            st.write(f"**Description:** {article.get('description', 'No Description Available')}")
-                            st.write(f"**Sentiment:** {article.get('sentiment', 'N/A')}")
-                            st.write("---")
-                    except Exception as e:
-                        st.error(f"Error processing articles: {e}")
-                else:
-                    st.warning("No news articles found for this stock ticker.")
+            articles = fetch_news(stock_ticker)
+            if articles:
+                sentiment_counts = analyze_news_sentiment(articles)
+                st.write(sentiment_counts)
 
     elif choice == "Recommendations":
         st.header("Recommendations")
