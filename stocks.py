@@ -3,7 +3,6 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import requests
-import cohere
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.models import Sequential
@@ -14,17 +13,12 @@ from prophet import Prophet
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 import plotly.graph_objects as go
-from textblob import TextBlob  # Fallback sentiment analysis
 from transformers import BertTokenizer, BertForSequenceClassification
 import torch
 
-# Initialize Cohere client
-co = cohere.Client("gpWuZqkXdfhfbYkjLlyRnc5x2rj0ml1IqfULfjt0")  # Replace with your valid API key
-
-# Analyze sentiment of news articles
+# Load FinBERT model and tokenizer
 tokenizer = BertTokenizer.from_pretrained("yiyanghkust/finbert-tone")
 model = BertForSequenceClassification.from_pretrained("yiyanghkust/finbert-tone")
-
 
 # Fetch stock data
 def fetch_stock_data(symbol):
@@ -38,7 +32,7 @@ def fetch_stock_data(symbol):
 
 # Fetch news articles
 def fetch_news(query):
-    url = f"https://newsapi.org/v2/everything?q={query}&apiKey=3f8e6bb1fb72490b835c800afcadd1aa"  # Replace with your NewsAPI key
+    url = f"https://newsapi.org/v2/everything?q={query}&apiKey=gpWuZqkXdfhfbYkjLlyRnc5x2rj0ml1IqfULfjt0"  # Replace with your NewsAPI key
     try:
         response = requests.get(url)
         if response.status_code == 200:
@@ -51,6 +45,7 @@ def fetch_news(query):
         st.error(f"Error fetching news: {e}")
         return []
 
+# Analyze sentiment of news articles using FinBERT
 def analyze_news_sentiment(articles):
     sentiment_counts = {"Positive": 0, "Negative": 0, "Neutral": 0, "Error": 0}
     for article in articles:
@@ -382,61 +377,6 @@ def main():
                 recommendations = generate_recommendations(stock_data, financial_ratios, period)
                 for recommendation in recommendations:
                     st.write(recommendation)
-    def main():
-        st.title("Stock Analysis Dashboard")
-
-        # Sidebar for navigation
-        st.sidebar.title("Navigation")
-        options = ["Stock Analysis", "Monte Carlo Simulation", "Financial Ratios", "News Sentiment", "Latest News", "Recommendations", "Predictions"]
-        choice = st.sidebar.radio("Choose a section", options)
-        if choice == "Stock Analysis":
-            st.header("Stock Analysis")
-            stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
-            if st.button("Submit"):
-                stock_data = fetch_stock_data(stock_ticker)
-                if not stock_data.empty:
-                    fig = go.Figure()
-                    fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data['Close'], mode='lines', name='Close Price'))
-                    fig.update_layout(title=f"Stock Price for {stock_ticker}", xaxis_title="Date", yaxis_title="Price")
-                    st.plotly_chart(fig)
-
-        elif choice == "Latest News":
-            st.header("Latest News")
-            stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
-            if st.button("Submit"):
-                with st.spinner("Fetching news articles..."):
-                    articles = fetch_news(stock_ticker)
-                    if articles:
-                        try:
-                            sentiment_counts = analyze_news_sentiment(articles)
-                            st.subheader("Sentiment Summary")
-                            st.write(f"Positive: {sentiment_counts['Positive']}")
-                            st.write(f"Negative: {sentiment_counts['Negative']}")
-                            st.write(f"Neutral: {sentiment_counts['Neutral']}")
-                            st.write(f"Errors: {sentiment_counts['Error']}")
-
-                            st.subheader("Top 5 News Articles")
-                            for article in articles[:5]:  # Display top 5 articles
-                                st.write(f"**Title:** {article.get('title', 'No Title Available')}")
-                                st.write(f"**Description:** {article.get('description', 'No Description Available')}")
-                                st.write(f"**Sentiment:** {article.get('sentiment', 'N/A')}")
-                                st.write("---")
-                     except Exception as e:
-                        st.error(f"Error processing articles: {e}")
-                    else:
-                        st.warning("No news articles found for this stock ticker.")
-
-    elif choice == "Recommendations":
-        st.header("Recommendations")
-        stock_ticker = st.text_input("Enter Stock Ticker", value="AAPL")
-        period = st.number_input("Enter Analysis Period (days)", value=30)
-        if st.button("Submit"):
-            stock_data = fetch_stock_data(stock_ticker)
-            if not stock_data.empty:
-                financial_ratios = calculate_risk_metrics(stock_data)
-                recommendations = generate_recommendations(stock_data, financial_ratios, period)
-                for recommendation in recommendations:
-                    st.write(recommendation)
 
     elif choice == "Predictions":
         st.header("Predictions")
@@ -493,7 +433,6 @@ def main():
 
                 except Exception as e:
                     st.error(f"Error in predictions: {e}")
-
 
 if __name__ == "__main__":
     main()
